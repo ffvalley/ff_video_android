@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_alignParentBottom="true"
+    android:background="@drawable/bg"
+    android:orientation="vertical">
+
+    <SeekBar
+        android:id="@+id/video_progress_sb"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:maxHeight="3dp"
+        android:minHeight="3dp"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp"
+        android:progressDrawable="@drawable/video_progress_selector"
+        android:thumb="@drawable/slider" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="45dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/video_control_ll"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/video_backward_btn"
+                android:layout_width="27dp"
+                android:layout_height="21dp"
+                android:layout_marginStart="20dp"
+                android:background="@drawable/video_backward_selector" />
+
+            <Button
+                android:id="@+id/video_switch_btn"
+                android:layout_width="16dp"
+                android:layout_height="19dp"
+                android:layout_marginStart="20dp"
+                android:background="@drawable/start" />
+
+            <Button
+                android:id="@+id/video_forward_btn"
+                android:layout_width="27dp"
+                android:layout_height="21dp"
+                android:layout_marginStart="20dp"
+                android:background="@drawable/video_forward_selector" />
+
+            <TextView
+                android:id="@+id/video_current_time_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:text="00:00"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" / "
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/video_total_time_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/video_volume_btn"
+            android:layout_width="23dp"
+            android:layout_height="20dp"
+            android:background="@drawable/vol_up" />
+
+        <SeekBar
+            android:id="@+id/video_volume_sb"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:maxHeight="3dp"
+            android:minHeight="3dp"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:progressDrawable="@drawable/video_progress_selector"
+            android:thumb="@drawable/slider" />
+
+        <Button
+            android:id="@+id/video_zoom_btn"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="20dp"
+            android:background="@drawable/minimize" />
+    </LinearLayout>
+</LinearLayout>

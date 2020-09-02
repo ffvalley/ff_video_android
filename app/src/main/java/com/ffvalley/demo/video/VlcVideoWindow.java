@@ -209,10 +209,9 @@ public class VlcVideoWindow {
             return;
         }
 
-        int playerState = mBuilder.bMediaPlayer.getPlayerState();
         mVideoSwitchBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.start));
         mVideoSwitchBtn.setTag(R.id.video_switch_btn, true);
-        if (mBuilder.bMediaPlayer.getMedia() == null || !mBuilder.bMediaPlayer.isReleased()) {
+        if (mBuilder.bMediaPlayer.getMedia() == null || mBuilder.bMediaPlayer.getMedia().getState() != 4) {
             mBuilder.bMediaPlayer.setMedia(mMedia);
         }
         mBuilder.bMediaPlayer.play();

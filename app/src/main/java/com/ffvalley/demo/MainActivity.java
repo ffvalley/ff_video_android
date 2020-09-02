@@ -10,6 +10,7 @@ import android.content.ServiceConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.view.View;
@@ -25,10 +26,10 @@ import pub.devrel.easypermissions.EasyPermissions;
 
 public class MainActivity extends AppCompatActivity {
 
-    String mPlayerUrl = "demo.mpg"; // ASSET资源文件
-    VlcVideoType mVideoType = VlcVideoType.ASSET_VIDEO;
-//    String mPlayerUrl = Environment.getExternalStorageDirectory().getAbsolutePath() + "/xxxx.MP4"; // 本地视频文件
-//    VlcVideoType mVideoType = VlcVideoType.LOCAL_VIDEO;
+//    String mPlayerUrl = "demo.mpg"; // ASSET资源文件
+//    VlcVideoType mVideoType = VlcVideoType.ASSET_VIDEO;
+    String mPlayerUrl = Environment.getExternalStorageDirectory().getAbsolutePath() + "/test.mp4"; // 本地视频文件
+    VlcVideoType mVideoType = VlcVideoType.LOCAL_VIDEO;
 //    String mPlayerUrl = "http://videoconverter.vivo.com.cn/201706/655_1498479540118.mp4.main.m3u8"; // rtsp流媒体文件
 //    VlcVideoType mVideoType = VlcVideoType.RTSP_VIDEO;
 

@@ -2,6 +2,8 @@ package com.ffvalley.demo.video;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
@@ -11,6 +13,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
@@ -52,6 +55,7 @@ public class VlcVideoWindow {
     private Button mVlcCloseBtn;
     private View mVlcConsole; // 控制台控件
 
+    private boolean mNeedPaint = true;
     private SurfaceView mSurfaceView;
     private Button mVideoZoomBtn;
     private Button mVideoSwitchBtn;
@@ -123,6 +127,7 @@ public class VlcVideoWindow {
 
         // 关联播放器
         mSurfaceView = mWindowLayoutView.findViewById(R.id.vlc_video_sv);
+        mSurfaceView.getHolder().addCallback(mSurfaceHolderCallback);
         mBuilder.bVlcVout.setVideoView(mSurfaceView);
         mVlcVideoStatusTv = mWindowLayoutView.findViewById(R.id.vlc_video_status_tv);
 
@@ -358,7 +363,7 @@ public class VlcVideoWindow {
     };
 
     // 触摸事件监听
-    View.OnTouchListener mOnTouchListener = new View.OnTouchListener() {
+    private View.OnTouchListener mOnTouchListener = new View.OnTouchListener() {
         private int downX;
         private int downY;
 
@@ -396,6 +401,28 @@ public class VlcVideoWindow {
         }
     };
 
+    // Surface事件监听
+    private SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
+        @Override
+        public void surfaceCreated(SurfaceHolder holder) {
+            if (mNeedPaint) {
+                mNeedPaint = false;
+                Canvas canvas = holder.lockCanvas();
+                canvas.drawColor(Color.BLACK);
+                holder.unlockCanvasAndPost(canvas);
+            }
+        }
+
+        @Override
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+        }
+
+        @Override
+        public void surfaceDestroyed(SurfaceHolder holder) {
+        }
+    };
+
     // 进度条事件监听
     private SeekBar.OnSeekBarChangeListener mOnSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
 
@@ -421,7 +448,7 @@ public class VlcVideoWindow {
     };
 
     // 视频初始化事件监听
-    IVLCVout.OnNewVideoLayoutListener mOnNewVideoLayoutListener = new IVLCVout.OnNewVideoLayoutListener() {
+    private IVLCVout.OnNewVideoLayoutListener mOnNewVideoLayoutListener = new IVLCVout.OnNewVideoLayoutListener() {
 
         @Override
         public void onNewVideoLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
@@ -430,7 +457,7 @@ public class VlcVideoWindow {
     };
 
     // 视频实时事件监听
-    MediaPlayer.EventListener mEventListener = new MediaPlayer.EventListener() {
+    private MediaPlayer.EventListener mEventListener = new MediaPlayer.EventListener() {
 
         @SuppressLint("UseCompatLoadingForDrawables")
         @Override
@@ -462,7 +489,7 @@ public class VlcVideoWindow {
     };
 
     // 总时间 CONSOLE_DISPLAY_DURATION，间隔 1000s 回调一次 onTick
-    CountDownTimer mCountDownTimer = new CountDownTimer(CONSOLE_DISPLAY_DURATION, 1000) {
+    private CountDownTimer mCountDownTimer = new CountDownTimer(CONSOLE_DISPLAY_DURATION, 1000) {
         @Override
         public void onTick(long millisUntilFinished) {
         }

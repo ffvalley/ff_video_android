@@ -1,6 +1,7 @@
 package org.videolan.libvlc.util;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.view.SurfaceView;
@@ -50,7 +51,7 @@ public class VLCVideoLayout extends FrameLayout {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        setBackgroundResource(R.color.black);
+        setBackgroundColor(Color.BLACK);
         final ViewGroup.LayoutParams lp = getLayoutParams();
         lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
         lp.width = ViewGroup.LayoutParams.MATCH_PARENT;

@@ -1,4 +1,4 @@
-package com.ffvalley.demo.video;
+package com.ffvalley.demo.vlc;
 
 import android.annotation.SuppressLint;
 import android.app.Dialog;
@@ -23,6 +23,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 
 import com.ffvalley.demo.R;
+import com.ffvalley.demo.constant.CommonConstant;
+import com.ffvalley.demo.exception.VideoException;
 import com.ffvalley.demo.utils.DateUtil;
 import com.ffvalley.demo.utils.DisplayUtil;
 import com.ffvalley.demo.utils.NumberUtil;
@@ -81,7 +83,7 @@ public class VlcVideoDialog extends Dialog {
         // 设置播放库
         public Builder setPlayLib(LibVLC libVLC) {
             if (libVLC == null)
-                throw new VlcVideoException("setPlayLib - libVLC参数，" + VlcConstant.VLC_EXCEPTION_NOT_NULL);
+                throw new VideoException("setPlayLib - libVLC参数，" + CommonConstant.EXCEPTION_MESSAGE_NOT_NULL);
 
             bLibVLC = libVLC;
             bMediaPlayer = new MediaPlayer(libVLC);
@@ -92,9 +94,9 @@ public class VlcVideoDialog extends Dialog {
         public VlcVideoDialog build() {
 //            final VlcVideoDialog dialog = new VlcVideoDialog(context, R.style.Dialog);
             if (bContext == null) {
-                throw new VlcVideoException("Builder - context参数，" + VlcConstant.VLC_EXCEPTION_NOT_NULL);
+                throw new VideoException("Builder - context参数，" + CommonConstant.EXCEPTION_MESSAGE_NOT_NULL);
             } else if (bLibVLC == null) {
-                throw new VlcVideoException("setPlayLib - libVLC参数，" + VlcConstant.VLC_EXCEPTION_NOT_NULL);
+                throw new VideoException("setPlayLib - libVLC参数，" + CommonConstant.EXCEPTION_MESSAGE_NOT_NULL);
             }
             bDialog = new VlcVideoDialog(bContext, this);
             bDialog.setCanceledOnTouchOutside(false);
@@ -160,7 +162,7 @@ public class VlcVideoDialog extends Dialog {
 
     // 加载视频源 1-本地视频、2-流媒体视频、3-资源视频
     public void loadVideo(String videoUrl, VlcVideoType type) {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
 
         mBuilder.bMediaPlayer.setEventListener(mEventListener);
         mBuilder.bVlcVout.attachViews(mOnNewVideoLayoutListener);
@@ -173,10 +175,10 @@ public class VlcVideoDialog extends Dialog {
                 } else if (VlcVideoType.ASSET_VIDEO == type) {
                     mMedia = new Media(mBuilder.bLibVLC, mBuilder.bContext.getAssets().openFd(videoUrl));
                 } else {
-                    throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_01);
+                    throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_01);
                 }
             } else {
-                throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_02);
+                throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_02);
             }
             mBuilder.bMediaPlayer.setMedia(mMedia);
             mMedia.release();
@@ -188,8 +190,8 @@ public class VlcVideoDialog extends Dialog {
     // 播放视频操作
     @SuppressLint("UseCompatLoadingForDrawables")
     public void playVideo() {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
-        if (mMedia == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_04);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mMedia == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_04);
         mVideoSwitchBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.start));
         mVideoSwitchBtn.setTag(R.id.video_switch_btn, true);
         mBuilder.bMediaPlayer.play();
@@ -198,8 +200,8 @@ public class VlcVideoDialog extends Dialog {
     // 暂停视频操作
     @SuppressLint("UseCompatLoadingForDrawables")
     public void pauseVideo() {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
-        if (mMedia == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_04);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mMedia == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_04);
 
         mVideoSwitchBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.stop));
         mVideoSwitchBtn.setTag(R.id.video_switch_btn, false);
@@ -210,7 +212,7 @@ public class VlcVideoDialog extends Dialog {
     // 缩小屏幕操作
     @SuppressLint("UseCompatLoadingForDrawables")
     public void narrowScreen() {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
 
         mDialogWindow.setLayout(DisplayUtil.dip2px(mBuilder.bContext, 500), DisplayUtil.dip2px(mBuilder.bContext, 320));
         // dialogWindow.setGravity(Gravity.BOTTOM | Gravity.END);
@@ -222,7 +224,7 @@ public class VlcVideoDialog extends Dialog {
     // 放大屏幕操作
     @SuppressLint("UseCompatLoadingForDrawables")
     public void enlargeScreen() {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
 
         mDialogWindow.setLayout(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
         mDialogWindow.setGravity(Gravity.CENTER);
@@ -313,8 +315,8 @@ public class VlcVideoDialog extends Dialog {
 
     // 初始化显示视频相关信息
     private void initMediaInfo() {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
-        if (mMedia == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_04);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mMedia == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_04);
 
         mTotalTime = mBuilder.bMediaPlayer.getLength();
 
@@ -327,8 +329,8 @@ public class VlcVideoDialog extends Dialog {
 
     // 更新显示视频相关信息
     private void updateMediaInfo() {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
-        if (mMedia == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_04);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mMedia == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_04);
 
         long currentTime = mBuilder.bMediaPlayer.getTime();
 
@@ -343,24 +345,24 @@ public class VlcVideoDialog extends Dialog {
 
     // 设置视频播放进度
     private void setProgress(int progress) {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
-        if (mMedia == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_04);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mMedia == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_04);
 
         mBuilder.bMediaPlayer.setTime(mTotalTime / PROGRESS_MAX * progress);
     }
 
     // 设置视频播放音量
     private void setVolume(int progress) {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
-        if (mMedia == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_04);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mMedia == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_04);
 
         mBuilder.bMediaPlayer.setVolume(progress);
     }
 
     // 设置播放位置 单位ms
     private void setMediaPosition(int increment) {
-        if (mDialogWindow == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
-        if (mMedia == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_04);
+        if (mDialogWindow == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mMedia == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_04);
 
         long currentTime = mBuilder.bMediaPlayer.getTime();
         mBuilder.bMediaPlayer.setTime(currentTime + increment);

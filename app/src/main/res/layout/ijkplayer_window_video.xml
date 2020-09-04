@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/vlc_video_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/black">
 
-    <SurfaceView
-        android:id="@+id/vlc_video_sv"
+    <tv.danmaku.ijk.media.lib.media.IjkVideoView
+        android:id="@+id/ijk_video_ivv"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="wrap_content" />
 
     <TextView
-        android:id="@+id/vlc_video_status_tv"
+        android:id="@+id/ijk_video_status_tv"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/black"
@@ -22,16 +22,15 @@
         android:textSize="25sp"
         android:visibility="gone" />
 
-    <Button
-        android:id="@+id/vlc_close_btn"
-        android:layout_width="25dp"
-        android:layout_height="25dp"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="20dp"
-        android:layout_marginEnd="26dp"
-        android:background="@drawable/video_switch_selector" />
+    <TableLayout
+        android:id="@+id/ijk_video_tl"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:background="@color/ijk_transparent_dark"
+        android:padding="8dp" />
 
     <include
-        android:id="@+id/vlc_console"
+        android:id="@+id/ijk_console"
         layout="@layout/include_video_console" />
 </RelativeLayout>

@@ -1,4 +1,4 @@
-package com.ffvalley.demo.video;
+package com.ffvalley.demo.vlc;
 
 public interface OnVlcVideoListener {
     // 关闭窗口回调

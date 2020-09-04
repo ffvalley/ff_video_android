@@ -19,9 +19,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="onbinder video service" />
+
     <Button
         android:id="@+id/open_video_03"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="unbinder video service" />
+
+    <Button
+        android:id="@+id/open_video_04"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="IjkPlayer" />
 </LinearLayout>

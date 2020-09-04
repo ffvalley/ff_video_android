@@ -1,17 +1,19 @@
-package com.ffvalley.demo.video;
+package com.ffvalley.demo.vlc;
 
 import android.app.Service;
 import android.content.Intent;
-import android.os.Binder;
 import android.os.IBinder;
 import android.text.TextUtils;
+
+import androidx.annotation.Nullable;
+
+import com.ffvalley.demo.constant.CommonConstant;
 
 import org.videolan.libvlc.LibVLC;
 
 import java.util.ArrayList;
 
-public class VlcWindowBinderService extends Service {
-
+public class VlcWindowService extends Service {
     public static boolean mIsStarted = false;
     private VlcVideoWindow mVlcVideoWindow;
 
@@ -23,39 +25,19 @@ public class VlcWindowBinderService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        showLocalVideo(intent.getStringExtra(CommonConstant.VLC_PLAYER_URL_KEY)
+                , (VlcVideoType) intent.getSerializableExtra(CommonConstant.VLC_VIDEO_TYPE_KEY));
         return super.onStartCommand(intent, flags, startId);
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        return new VlcWindowBinder();
-    }
-
-    @Override
-    public void onDestroy() {
-        if (mVlcVideoWindow != null) mVlcVideoWindow.dismiss();
-        mIsStarted = false;
-        super.onDestroy();
-    }
-
-    public class VlcWindowBinder extends Binder {
-        public VlcWindowBinderService getService() {
-            return VlcWindowBinderService.this;
-        }
-
-        public void showVideo(String playerUrl, VlcVideoType videoType) {
-            createVideo(playerUrl, videoType);
-        }
-    }
-
-    private void createVideo(String playerUrl, VlcVideoType videoType) {
+    private void showLocalVideo(String playerUrl, VlcVideoType videoType) {
         if (!TextUtils.isEmpty(playerUrl)) {
             ArrayList<String> args = new ArrayList<>();
             args.add("--vout=android-display");
             args.add("--rtsp-tcp");
 
-            mVlcVideoWindow = new VlcVideoWindow.Builder(VlcWindowBinderService.this)
-                    .setPlayLib(new LibVLC(VlcWindowBinderService.this, args))
+            mVlcVideoWindow = new VlcVideoWindow.Builder(VlcWindowService.this)
+                    .setPlayLib(new LibVLC(VlcWindowService.this, args))
                     .build();
 
             mVlcVideoWindow.initDialog();
@@ -65,9 +47,23 @@ public class VlcWindowBinderService extends Service {
                 @Override
                 public void dismiss() {
                     mIsStarted = false;
-                    VlcWindowBinderService.this.onDestroy();
+                    VlcWindowService.this.stopSelf();
                 }
             });
         }
     }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        if (mVlcVideoWindow != null) mVlcVideoWindow.dismiss();
+        mIsStarted = false;
+        super.onDestroy();
+    }
+
 }

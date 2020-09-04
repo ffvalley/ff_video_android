@@ -1,4 +1,4 @@
-package com.ffvalley.demo.video;
+package com.ffvalley.demo.vlc;
 
 import java.io.Serializable;
 

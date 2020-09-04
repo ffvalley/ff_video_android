@@ -1,4 +1,4 @@
-package com.ffvalley.demo.video;
+package com.ffvalley.demo.vlc;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -24,6 +24,8 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.ffvalley.demo.R;
+import com.ffvalley.demo.constant.CommonConstant;
+import com.ffvalley.demo.exception.VideoException;
 import com.ffvalley.demo.utils.DateUtil;
 import com.ffvalley.demo.utils.DisplayUtil;
 import com.ffvalley.demo.utils.NumberUtil;
@@ -89,7 +91,7 @@ public class VlcVideoWindow {
         // 设置播放库
         public Builder setPlayLib(LibVLC libVLC) {
             if (libVLC == null)
-                throw new VlcVideoException("setPlayLib - libVLC参数，" + VlcConstant.VLC_EXCEPTION_NOT_NULL);
+                throw new VideoException("setPlayLib - libVLC参数，" + CommonConstant.EXCEPTION_MESSAGE_NOT_NULL);
 
             bLibVLC = libVLC;
             bMediaPlayer = new MediaPlayer(libVLC);
@@ -99,9 +101,9 @@ public class VlcVideoWindow {
 
         public VlcVideoWindow build() {
             if (bContext == null) {
-                throw new VlcVideoException("Builder - context参数，" + VlcConstant.VLC_EXCEPTION_NOT_NULL);
+                throw new VideoException("Builder - context参数，" + CommonConstant.EXCEPTION_MESSAGE_NOT_NULL);
             } else if (bLibVLC == null) {
-                throw new VlcVideoException("setPlayLib - libVLC参数，" + VlcConstant.VLC_EXCEPTION_NOT_NULL);
+                throw new VideoException("setPlayLib - libVLC参数，" + CommonConstant.EXCEPTION_MESSAGE_NOT_NULL);
             }
             return new VlcVideoWindow(bContext, this);
         }
@@ -172,7 +174,7 @@ public class VlcVideoWindow {
 
     // 加载视频源 1-本地视频、2-流媒体视频、3-资源视频
     public void loadVideo(String videoUrl, VlcVideoType type) {
-        if (mWindowLayoutView == null) throw new VlcVideoException(VlcConstant.VLC_EXCEPTION_03);
+        if (mWindowLayoutView == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
 
         mBuilder.bMediaPlayer.setEventListener(mEventListener);
         mBuilder.bVlcVout.attachViews(mOnNewVideoLayoutListener);
@@ -185,10 +187,10 @@ public class VlcVideoWindow {
                 } else if (VlcVideoType.ASSET_VIDEO == type) {
                     mMedia = new Media(mBuilder.bLibVLC, mBuilder.bContext.getAssets().openFd(videoUrl));
                 } else {
-                    showTipView(VlcConstant.VLC_EXCEPTION_01);
+                    showTipView(CommonConstant.EXCEPTION_MESSAGE_01);
                 }
             } else {
-                showTipView(VlcConstant.VLC_EXCEPTION_02);
+                showTipView(CommonConstant.EXCEPTION_MESSAGE_02);
             }
             mBuilder.bMediaPlayer.setMedia(mMedia);
             mMedia.release();
@@ -206,11 +208,11 @@ public class VlcVideoWindow {
     @SuppressLint("UseCompatLoadingForDrawables")
     public void playVideo() {
         if (mWindowLayoutView == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_03);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_03);
             return;
         }
         if (mMedia == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_04);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_04);
             return;
         }
 
@@ -226,11 +228,11 @@ public class VlcVideoWindow {
     @SuppressLint("UseCompatLoadingForDrawables")
     public void pauseVideo() {
         if (mWindowLayoutView == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_03);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_03);
             return;
         }
         if (mMedia == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_04);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_04);
             return;
         }
 
@@ -244,7 +246,7 @@ public class VlcVideoWindow {
     @SuppressLint("UseCompatLoadingForDrawables")
     public void narrowScreen() {
         if (mWindowLayoutView == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_03);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_03);
             return;
         }
 
@@ -261,7 +263,7 @@ public class VlcVideoWindow {
     @SuppressLint("UseCompatLoadingForDrawables")
     public void enlargeScreen() {
         if (mWindowLayoutView == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_03);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_03);
             return;
         }
 
@@ -279,11 +281,11 @@ public class VlcVideoWindow {
     @SuppressLint("UseCompatLoadingForDrawables")
     public void setVolume(int progress) {
         if (mWindowLayoutView == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_03);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_03);
             return;
         }
         if (mMedia == null) {
-            Log.w(TAG, VlcConstant.VLC_EXCEPTION_04);
+            Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_04);
             return;
         }
 
@@ -467,7 +469,7 @@ public class VlcVideoWindow {
                     break;
                 case 1: // Opening
                 case 2: // Buffering
-                    showTipView(VlcConstant.VLC_EXCEPTION_07);
+                    showTipView(CommonConstant.EXCEPTION_MESSAGE_07);
                     break;
                 case 3: // Playing
                     updateMediaInfo();
@@ -479,10 +481,10 @@ public class VlcVideoWindow {
                 case 6: // Ended
                     mVideoSwitchBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.stop));
                     mVideoSwitchBtn.setTag(R.id.video_switch_btn, false);
-                    showTipView(VlcConstant.VLC_EXCEPTION_06);
+                    showTipView(CommonConstant.EXCEPTION_MESSAGE_06);
                     break;
                 case 7: // Error
-                    showTipView(VlcConstant.VLC_EXCEPTION_05);
+                    showTipView(CommonConstant.EXCEPTION_MESSAGE_05);
                     break;
             }
         }

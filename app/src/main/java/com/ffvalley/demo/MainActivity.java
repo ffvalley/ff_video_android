@@ -17,16 +17,17 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 
-import com.ffvalley.demo.video.VlcWindowService;
-import com.ffvalley.demo.video.VlcConstant;
-import com.ffvalley.demo.video.VlcVideoType;
-import com.ffvalley.demo.video.VlcWindowBinderService;
+import com.ffvalley.demo.ijkplayer.IjkPlayerWindowService;
+import com.ffvalley.demo.vlc.VlcWindowService;
+import com.ffvalley.demo.constant.CommonConstant;
+import com.ffvalley.demo.vlc.VlcVideoType;
+import com.ffvalley.demo.vlc.VlcWindowBinderService;
 
 import pub.devrel.easypermissions.EasyPermissions;
 
 public class MainActivity extends AppCompatActivity {
 
-//    String mPlayerUrl = "demo.mpg"; // ASSET资源文件
+    //    String mPlayerUrl = "demo.mpg"; // ASSET资源文件
 //    VlcVideoType mVideoType = VlcVideoType.ASSET_VIDEO;
     String mPlayerUrl = Environment.getExternalStorageDirectory().getAbsolutePath() + "/test.mp4"; // 本地视频文件
     VlcVideoType mVideoType = VlcVideoType.LOCAL_VIDEO;
@@ -41,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.open_video_01).setOnClickListener(mOnClickListener);
         findViewById(R.id.open_video_02).setOnClickListener(mOnClickListener);
         findViewById(R.id.open_video_03).setOnClickListener(mOnClickListener);
+        findViewById(R.id.open_video_04).setOnClickListener(mOnClickListener);
 
         EasyPermissions.requestPermissions(this, "need use storage", 200
                 , Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -55,14 +57,14 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "授权失败", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "授权成功", Toast.LENGTH_SHORT).show();
-                startVideoService();
+                startVLCService();
             }
         } else if (requestCode == 1) {
             if (!Settings.canDrawOverlays(this)) {
                 Toast.makeText(this, "授权失败", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "授权成功", Toast.LENGTH_SHORT).show();
-                onBinderService();
+                onBinderVLCService();
             }
 
         }
@@ -79,13 +81,14 @@ public class MainActivity extends AppCompatActivity {
         @RequiresApi(api = Build.VERSION_CODES.M)
         @Override
         public void onClick(View v) {
+
             if (R.id.open_video_01 == v.getId()) {
                 if (!VlcWindowBinderService.mIsStarted) {
                     if (!Settings.canDrawOverlays(MainActivity.this)) {
                         Toast.makeText(MainActivity.this, "当前无权限，请授权", Toast.LENGTH_SHORT).show();
                         startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())), 0);
                     } else {
-                        startVideoService();
+                        startVLCService();
                     }
                 }
             } else if (R.id.open_video_02 == v.getId()) {
@@ -94,24 +97,35 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this, "当前无权限，请授权", Toast.LENGTH_SHORT).show();
                         startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())), 1);
                     } else {
-                        onBinderService();
+                        onBinderVLCService();
                     }
                 }
             } else if (R.id.open_video_03 == v.getId()) {
                 if (VlcWindowBinderService.mIsStarted) {
-                    unBinderService();
+                    unBinderVLCService();
                 }
+            }
+            if (R.id.open_video_04 == v.getId()) {
+                startIjkPlayerService();
             }
         }
     };
 
-    private void startVideoService() {
-        Intent intent = new Intent(MainActivity.this, VlcWindowService.class);
-        intent.putExtra(VlcConstant.VLC_PLAYER_URL_KEY, mPlayerUrl);
-        intent.putExtra(VlcConstant.VLC_VIDEO_TYPE_KEY, mVideoType);
+    // start模式开启IjkPlayer悬浮框频频播放服务
+    private void startIjkPlayerService() {
+        Intent intent = new Intent(MainActivity.this, IjkPlayerWindowService.class);
         startService(intent);
     }
 
+    // start模式开启VLC悬浮框频频播放服务
+    private void startVLCService() {
+        Intent intent = new Intent(MainActivity.this, VlcWindowService.class);
+        intent.putExtra(CommonConstant.VLC_PLAYER_URL_KEY, mPlayerUrl);
+        intent.putExtra(CommonConstant.VLC_VIDEO_TYPE_KEY, mVideoType);
+        startService(intent);
+    }
+
+    // binder模式开启VLC悬浮框频频播放服务
     private VlcWindowBinderService mService;
     private VlcWindowBinderService.VlcWindowBinder mBinder;
     ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -129,12 +143,12 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private void onBinderService() {
+    private void onBinderVLCService() {
         Intent bindIntent = new Intent(this, VlcWindowBinderService.class);
         bindService(bindIntent, mServiceConnection, BIND_AUTO_CREATE);
     }
 
-    private void unBinderService() {
+    private void unBinderVLCService() {
         unbindService(mServiceConnection);
     }
 

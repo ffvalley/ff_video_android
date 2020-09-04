@@ -1,2 +1,2 @@
-include ':app', ':libvlc'
+include ':app', ':libvlc', ':libijkplayer'
 rootProject.name='ff_video_android'

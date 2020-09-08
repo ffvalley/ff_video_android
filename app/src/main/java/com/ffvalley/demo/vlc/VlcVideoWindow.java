@@ -41,6 +41,7 @@ public class VlcVideoWindow {
     private static final String TAG = "VlcVideoWindow.class";
     private static final int PROGRESS_MAX = 10000;
     private static final int CONSOLE_DISPLAY_DURATION = 5 * 1000;
+    private static final int CONSOLE_10_S = 10 * 1000;
     private static final int VOLUME_DEFAULT_SIZE = 50;
 
     private Builder mBuilder;
@@ -174,7 +175,8 @@ public class VlcVideoWindow {
 
     // 加载视频源 1-本地视频、2-流媒体视频、3-资源视频
     public void loadVideo(String videoUrl, VlcVideoType type) {
-        if (mWindowLayoutView == null) throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+        if (mWindowLayoutView == null)
+            throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
 
         mBuilder.bMediaPlayer.setEventListener(mEventListener);
         mBuilder.bVlcVout.attachViews(mOnNewVideoLayoutListener);
@@ -340,12 +342,12 @@ public class VlcVideoWindow {
                     break;
                 case R.id.video_forward_btn:
                     // 快进
-                    setMediaPosition(10 * 1000);
+                    setMediaPosition(CONSOLE_10_S);
                     mCountDownTimer.start();
                     break;
                 case R.id.video_backward_btn:
                     // 快退
-                    setMediaPosition(-10 * 1000);
+                    setMediaPosition(-CONSOLE_10_S);
                     mCountDownTimer.start();
                     break;
                 case R.id.video_volume_btn:
@@ -555,7 +557,13 @@ public class VlcVideoWindow {
     // 设置播放位置(快进/快退) 单位ms
     private void setMediaPosition(int increment) {
         long currentTime = mBuilder.bMediaPlayer.getTime();
-        mBuilder.bMediaPlayer.setTime(currentTime + increment);
+        if (CONSOLE_10_S < currentTime && currentTime < mTotalTime - CONSOLE_10_S) {
+            mBuilder.bMediaPlayer.setTime(currentTime + increment);
+        } else if (currentTime < CONSOLE_10_S && increment > 0) {
+            mBuilder.bMediaPlayer.setTime(currentTime + increment);
+        } else if (currentTime > mTotalTime - CONSOLE_10_S && increment < 0) {
+            mBuilder.bMediaPlayer.setTime(currentTime + increment);
+        }
     }
     // -------------------------- 本地私有方法 finish -----------------------------------
 }

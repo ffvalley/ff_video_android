@@ -1,21 +1,27 @@
 package com.ffvalley.demo.vlc;
 
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.media.AudioManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.CountDownTimer;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Display;
+import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -28,7 +34,6 @@ import com.ffvalley.demo.constant.CommonConstant;
 import com.ffvalley.demo.exception.VideoException;
 import com.ffvalley.demo.utils.DateUtil;
 import com.ffvalley.demo.utils.DisplayUtil;
-import com.ffvalley.demo.utils.NumberUtil;
 
 import org.videolan.libvlc.IVLCVout;
 import org.videolan.libvlc.LibVLC;
@@ -39,10 +44,9 @@ import org.videolan.libvlc.MediaPlayer;
 public class VlcVideoWindow {
 
     private static final String TAG = "VlcVideoWindow.class";
-    private static final int PROGRESS_MAX = 10000;
+    //    private static final int PROGRESS_MAX = 10000;
     private static final int CONSOLE_DISPLAY_DURATION = 5 * 1000;
     private static final int CONSOLE_10_S = 10 * 1000;
-    private static final int VOLUME_DEFAULT_SIZE = 50;
 
     private Builder mBuilder;
     private OnVlcVideoListener mOnVlcVideoListener;
@@ -50,21 +54,34 @@ public class VlcVideoWindow {
     private Media mMedia;
     private long mTotalTime = 0; // 视频播放总时间
 
+    private boolean mIsPlaying = false; // 是否正在播放视频
+    private boolean mIsMinimize = false; // 是否最小化视频窗口
+    private boolean mIsReceiverVolume = false; // 是否是系统广播导致音量发生变化
+    private int mTempVolume = 0; // 缓存音量
+
     private LayoutInflater mLayoutInflater;
+    private AudioManager mAudioManager;
     private WindowManager mWindowManager;
     private WindowManager.LayoutParams mLayoutParams;
     private View mWindowLayoutView; // 最外层view
+    private GestureDetector mGestureDetector;
+    private int mVideoWidth = 0;
+    private int mVideoHeight = 0;
 
     private Button mVlcCloseBtn;
     private View mVlcConsole; // 控制台控件
 
     private boolean mNeedPaint = true;
     private SurfaceView mSurfaceView;
-    private Button mVideoZoomBtn;
-    private Button mVideoSwitchBtn;
-    private Button mVideoForwardBtn;
-    private Button mVideoBackwardBtn;
-    private Button mVideoVolumeBtn;
+    private RelativeLayout mVideoZoomRl;
+    private View mVideoZoomView;
+    private RelativeLayout mVideoSwitchRl;
+    private View mVideoSwitchView;
+    private RelativeLayout mVideoVolumeRl;
+    private View mVideoVolumeView;
+
+    private RelativeLayout mVideoForwardRl;
+    private RelativeLayout mVideoBackwardRl;
     private SeekBar mVideoProgressSb;
     private SeekBar mVideoVolumeSb;
     private TextView mVideoCurrentTimeTv;
@@ -75,7 +92,9 @@ public class VlcVideoWindow {
     private VlcVideoWindow(Context context, Builder builder) {
         mBuilder = builder;
         mLayoutInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);// 获取系统的Window管理者
+        mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE); // 获取系统的Audio管理者
+        registerSystemVolumeReceiver();
         mLayoutParams = new WindowManager.LayoutParams();
     }
 
@@ -96,6 +115,7 @@ public class VlcVideoWindow {
 
             bLibVLC = libVLC;
             bMediaPlayer = new MediaPlayer(libVLC);
+            bMediaPlayer.setVideoScale(MediaPlayer.ScaleType.SURFACE_BEST_FIT);
             bVlcVout = bMediaPlayer.getVLCVout();
             return this;
         }
@@ -112,12 +132,8 @@ public class VlcVideoWindow {
 
     // -------------------------- 对外暴露的公共方法 strat -----------------------------------
     // 初始化视频播放Dialog
-    public void initDialog() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            mLayoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        } else {
-            mLayoutParams.type = WindowManager.LayoutParams.TYPE_PHONE;
-        }
+    public void initWindow() {
+//        mLayoutParams.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
         mLayoutParams.format = PixelFormat.RGBA_8888;
         mLayoutParams.gravity = Gravity.CENTER;
         mLayoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
@@ -126,6 +142,7 @@ public class VlcVideoWindow {
 
         mWindowLayoutView = mLayoutInflater.inflate(R.layout.vlc_window_video, null);
         mWindowLayoutView.setOnTouchListener(mOnTouchListener);
+        mWindowLayoutView.setBackgroundColor(Color.BLACK);
         mWindowManager.addView(mWindowLayoutView, mLayoutParams);
 
         // 关联播放器
@@ -133,6 +150,19 @@ public class VlcVideoWindow {
         mSurfaceView.getHolder().addCallback(mSurfaceHolderCallback);
         mBuilder.bVlcVout.setVideoView(mSurfaceView);
         mVlcVideoStatusTv = mWindowLayoutView.findViewById(R.id.vlc_video_status_tv);
+
+        mGestureDetector = new GestureDetector(mBuilder.bContext, new GestureDetector.SimpleOnGestureListener() {
+
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                if (mIsMinimize) {
+                    enlargeScreen();
+                } else {
+                    narrowScreen();
+                }
+                return super.onDoubleTap(e);
+            }
+        });
 
         // 显示窗口关闭操作
         mVlcCloseBtn = mWindowLayoutView.findViewById(R.id.vlc_close_btn);
@@ -143,19 +173,21 @@ public class VlcVideoWindow {
         mVideoControlLl = mWindowLayoutView.findViewById(R.id.video_control_ll);
 
         // 显示窗口缩放操作
-        mVideoZoomBtn = mWindowLayoutView.findViewById(R.id.video_zoom_btn);
-        mVideoZoomBtn.setOnClickListener(mOnClickListener);
+        mVideoZoomRl = mWindowLayoutView.findViewById(R.id.video_zoom_rl);
+        mVideoZoomView = mWindowLayoutView.findViewById(R.id.video_zoom_btn);
+        mVideoZoomRl.setOnClickListener(mOnClickListener);
 
         // 开启/停止播放视频操作
-        mVideoSwitchBtn = mWindowLayoutView.findViewById(R.id.video_switch_btn);
-        mVideoSwitchBtn.setOnClickListener(mOnClickListener);
+        mVideoSwitchRl = mWindowLayoutView.findViewById(R.id.video_switch_rl);
+        mVideoSwitchView = mWindowLayoutView.findViewById(R.id.video_switch_btn);
+        mVideoSwitchRl.setOnClickListener(mOnClickListener);
 
         // 快进10s操作
-        mVideoForwardBtn = mWindowLayoutView.findViewById(R.id.video_forward_btn);
-        mVideoForwardBtn.setOnClickListener(mOnClickListener);
+        mVideoForwardRl = mWindowLayoutView.findViewById(R.id.video_forward_rl);
+        mVideoForwardRl.setOnClickListener(mOnClickListener);
         // 快退10s操作
-        mVideoBackwardBtn = mWindowLayoutView.findViewById(R.id.video_backward_btn);
-        mVideoBackwardBtn.setOnClickListener(mOnClickListener);
+        mVideoBackwardRl = mWindowLayoutView.findViewById(R.id.video_backward_rl);
+        mVideoBackwardRl.setOnClickListener(mOnClickListener);
 
         mVideoTotalTimeTv = mWindowLayoutView.findViewById(R.id.video_total_time_tv);
         mVideoCurrentTimeTv = mWindowLayoutView.findViewById(R.id.video_current_time_tv);
@@ -163,11 +195,13 @@ public class VlcVideoWindow {
         // 视频进度控制
         mVideoProgressSb = mWindowLayoutView.findViewById(R.id.video_progress_sb);
         mVideoProgressSb.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
+
         // 音量控制
         mVideoVolumeSb = mWindowLayoutView.findViewById(R.id.video_volume_sb);
         mVideoVolumeSb.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
-        mVideoVolumeBtn = mWindowLayoutView.findViewById(R.id.video_volume_btn);
-        mVideoVolumeBtn.setOnClickListener(mOnClickListener);
+        mVideoVolumeRl = mWindowLayoutView.findViewById(R.id.video_volume_rl);
+        mVideoVolumeView = mWindowLayoutView.findViewById(R.id.video_volume_btn);
+        mVideoVolumeRl.setOnClickListener(mOnClickListener);
 
         // 启动计时器
         mCountDownTimer.start();
@@ -201,6 +235,33 @@ public class VlcVideoWindow {
         }
     }
 
+    // 变更视频播放源
+    public void changeVideoSource(String videoUrl, VlcVideoType type) {
+        if (mWindowLayoutView == null)
+            throw new VideoException(CommonConstant.EXCEPTION_MESSAGE_03);
+
+        try {
+            if (!TextUtils.isEmpty(videoUrl)) {
+                if (VlcVideoType.LOCAL_VIDEO == type) {
+                    mMedia = new Media(mBuilder.bLibVLC, videoUrl);
+                } else if (VlcVideoType.RTSP_VIDEO == type) {
+                    mMedia = new Media(mBuilder.bLibVLC, Uri.parse(videoUrl));
+                } else if (VlcVideoType.ASSET_VIDEO == type) {
+                    mMedia = new Media(mBuilder.bLibVLC, mBuilder.bContext.getAssets().openFd(videoUrl));
+                } else {
+                    showTipView(CommonConstant.EXCEPTION_MESSAGE_01);
+                }
+            } else {
+                showTipView(CommonConstant.EXCEPTION_MESSAGE_02);
+            }
+            mVideoProgressSb.setProgress(0);
+            mBuilder.bMediaPlayer.setMedia(mMedia);
+            mMedia.release();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     // 设置回调方法
     public void setOnVlcVideoListener(OnVlcVideoListener onVlcVideoListener) {
         mOnVlcVideoListener = onVlcVideoListener;
@@ -218,8 +279,9 @@ public class VlcVideoWindow {
             return;
         }
 
-        mVideoSwitchBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.start));
-        mVideoSwitchBtn.setTag(R.id.video_switch_btn, true);
+        mVideoSwitchView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.start));
+        mIsPlaying = true;
+
         if (mBuilder.bMediaPlayer.getMedia() == null || mBuilder.bMediaPlayer.getMedia().getState() != 4) {
             mBuilder.bMediaPlayer.setMedia(mMedia);
         }
@@ -238,10 +300,15 @@ public class VlcVideoWindow {
             return;
         }
 
-        mVideoSwitchBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.stop));
-        mVideoSwitchBtn.setTag(R.id.video_switch_btn, false);
+        mVideoSwitchView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.stop));
+        mIsPlaying = false;
         mBuilder.bMediaPlayer.pause();
 
+    }
+
+    // 获取视频是否播放的状态
+    public boolean getPlayingStatus() {
+        return mIsPlaying;
     }
 
     // 缩小屏幕操作
@@ -252,13 +319,15 @@ public class VlcVideoWindow {
             return;
         }
 
+        mLayoutParams.x = DisplayUtil.dip2px(mBuilder.bContext, 500) / 2;
+        mLayoutParams.y = DisplayUtil.dip2px(mBuilder.bContext, 320) / 2;
         mLayoutParams.width = DisplayUtil.dip2px(mBuilder.bContext, 500);
         mLayoutParams.height = DisplayUtil.dip2px(mBuilder.bContext, 320);
-        mLayoutParams.gravity = Gravity.TOP | Gravity.START;
         mWindowManager.updateViewLayout(mWindowLayoutView, mLayoutParams);
 
-        mVideoZoomBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.fullscreen));
-        mVideoZoomBtn.setTag(R.id.video_zoom_btn, true);
+        mVideoZoomView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.fullscreen));
+        mIsMinimize = true;
+        updateSurfaceFrame();
     }
 
     // 放大屏幕操作
@@ -269,19 +338,24 @@ public class VlcVideoWindow {
             return;
         }
 
-
         mLayoutParams.width = RelativeLayout.LayoutParams.MATCH_PARENT;
         mLayoutParams.height = RelativeLayout.LayoutParams.MATCH_PARENT;
         mLayoutParams.gravity = Gravity.CENTER;
         mWindowManager.updateViewLayout(mWindowLayoutView, mLayoutParams);
 
-        mVideoZoomBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.minimize));
-        mVideoZoomBtn.setTag(R.id.video_zoom_btn, false);
+        mVideoZoomView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.minimize));
+        mIsMinimize = false;
+        updateSurfaceFrame();
+    }
+
+    // 获取视频是否小屏幕播放状态
+    public boolean getZoomStatus() {
+        return mIsMinimize;
     }
 
     // 设置视频播放音量
     @SuppressLint("UseCompatLoadingForDrawables")
-    public void setVolume(int progress) {
+    public void setVolume(int progress, boolean isSetSystemVolume) {
         if (mWindowLayoutView == null) {
             Log.w(TAG, CommonConstant.EXCEPTION_MESSAGE_03);
             return;
@@ -292,13 +366,22 @@ public class VlcVideoWindow {
         }
 
         mVideoVolumeSb.setProgress(progress);
-        mBuilder.bMediaPlayer.setVolume(progress);
-
-        if (progress == 0) {
-            mVideoVolumeBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.mute));
-        } else {
-            mVideoVolumeBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.vol_up));
+        if (isSetSystemVolume) {
+            setSystemVolume(progress);
         }
+
+        ViewGroup.LayoutParams layoutParams = mVideoVolumeView.getLayoutParams();
+        if (progress == 0) {
+            mVideoVolumeView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.mute));
+            layoutParams.width = DisplayUtil.dip2px(mBuilder.bContext, 14);
+            layoutParams.height = DisplayUtil.dip2px(mBuilder.bContext, 20);
+        } else {
+            mVideoVolumeView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.vol_up));
+            layoutParams.width = DisplayUtil.dip2px(mBuilder.bContext, 21);
+            layoutParams.height = DisplayUtil.dip2px(mBuilder.bContext, 18);
+        }
+        mVideoVolumeView.setLayoutParams(layoutParams);
+        mIsReceiverVolume = false;
     }
 
     // 关闭视频播放窗口
@@ -319,44 +402,44 @@ public class VlcVideoWindow {
 
             switch (v.getId()) {
                 case R.id.vlc_close_btn:
-                    mOnVlcVideoListener.dismiss();
+                    if (mOnVlcVideoListener != null)
+                        mOnVlcVideoListener.dismiss();
                     dismiss();
                     break;
-                case R.id.video_zoom_btn:
-                    // tag(当前是否为最小屏幕状态) 如果是null/false - 当前最大屏幕需要缩小； 如果是true - 当前最小需要放大
-                    if (v.getTag(R.id.video_zoom_btn) == null || !(boolean) v.getTag(R.id.video_zoom_btn)) {
-                        narrowScreen();
-                    } else {
+                case R.id.video_zoom_rl:
+                    if (mIsMinimize) {
                         enlargeScreen();
-                    }
-                    mCountDownTimer.start();
-                    break;
-                case R.id.video_switch_btn:
-                    // tag(当前是否为播放状态) 如果是null/false - 当前未播放视频需要播放； 如果是true - 当前正在播放视频
-                    if (v.getTag(R.id.video_switch_btn) == null || !(boolean) v.getTag(R.id.video_switch_btn)) {
-                        playVideo();
                     } else {
-                        pauseVideo();
+                        narrowScreen();
                     }
                     mCountDownTimer.start();
                     break;
-                case R.id.video_forward_btn:
+                case R.id.video_switch_rl:
+                    if (mIsPlaying) {
+                        pauseVideo();
+                    } else {
+                        playVideo();
+                    }
+                    mCountDownTimer.start();
+                    break;
+                case R.id.video_forward_rl:
                     // 快进
                     setMediaPosition(CONSOLE_10_S);
                     mCountDownTimer.start();
                     break;
-                case R.id.video_backward_btn:
+                case R.id.video_backward_rl:
                     // 快退
                     setMediaPosition(-CONSOLE_10_S);
                     mCountDownTimer.start();
                     break;
-                case R.id.video_volume_btn:
+                case R.id.video_volume_rl:
                     // 音量控制开关
                     if (mVideoVolumeSb != null) {
                         if (mVideoVolumeSb.getProgress() == 0) {
-                            setVolume(VOLUME_DEFAULT_SIZE);
+                            setVolume(mTempVolume, true);
                         } else {
-                            setVolume(0);
+                            mTempVolume = getCurrentSystemVolume();
+                            setVolume(0, true);
                         }
                     }
                     break;
@@ -401,14 +484,18 @@ public class VlcVideoWindow {
                 default:
                     break;
             }
+            mGestureDetector.onTouchEvent(event);
             return true;
         }
     };
+
+    private SurfaceHolder mSurfaceHolder;
 
     // Surface事件监听
     private SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
         @Override
         public void surfaceCreated(SurfaceHolder holder) {
+            mSurfaceHolder = holder;
             if (mNeedPaint) {
                 mNeedPaint = false;
                 Canvas canvas = holder.lockCanvas();
@@ -419,7 +506,6 @@ public class VlcVideoWindow {
 
         @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
         }
 
         @Override
@@ -433,7 +519,11 @@ public class VlcVideoWindow {
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
             if (seekBar == mVideoVolumeSb) {
-                setVolume(progress);
+                if (mIsReceiverVolume) {
+                    setVolume(progress, false);
+                } else {
+                    setVolume(progress, true);
+                }
             }
         }
 
@@ -456,6 +546,12 @@ public class VlcVideoWindow {
 
         @Override
         public void onNewVideoLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
+            if (mVideoWidth != visibleWidth || mVideoHeight != visibleHeight) {
+                mVideoWidth = visibleWidth;
+                mVideoHeight = visibleHeight;
+                updateSurfaceFrame();
+            }
+
             initMediaInfo();
         }
     };
@@ -466,27 +562,51 @@ public class VlcVideoWindow {
         @SuppressLint("UseCompatLoadingForDrawables")
         @Override
         public void onEvent(MediaPlayer.Event event) {
-            switch (mBuilder.bMediaPlayer.getPlayerState()) {
-                case 0: // NothingSpecial
+
+            switch (event.type) {
+                case MediaPlayer.Event.MediaChanged:
                     break;
-                case 1: // Opening
-                case 2: // Buffering
-                    showTipView(CommonConstant.EXCEPTION_MESSAGE_07);
-                    break;
-                case 3: // Playing
-                    updateMediaInfo();
-                    break;
-                case 4: // Paused
-                    break;
-                case 5: // Stopped
-                    break;
-                case 6: // Ended
-                    mVideoSwitchBtn.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.stop));
-                    mVideoSwitchBtn.setTag(R.id.video_switch_btn, false);
+                case MediaPlayer.Event.EndReached:
+                    mVideoSwitchView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.stop));
+                    mIsPlaying = false;
                     showTipView(CommonConstant.EXCEPTION_MESSAGE_06);
                     break;
-                case 7: // Error
+                case MediaPlayer.Event.Stopped:
+                    break;
+                case MediaPlayer.Event.EncounteredError:
+                    mIsPlaying = false;
+                    mVideoSwitchView.setBackground(mBuilder.bContext.getResources().getDrawable(R.drawable.stop));
                     showTipView(CommonConstant.EXCEPTION_MESSAGE_05);
+                    break;
+                case MediaPlayer.Event.Opening:
+                    showTipView(CommonConstant.EXCEPTION_MESSAGE_07);
+                    break;
+                case MediaPlayer.Event.Buffering:
+                    break;
+                case MediaPlayer.Event.Playing:
+                    break;
+                case MediaPlayer.Event.Paused:
+                    break;
+                case MediaPlayer.Event.TimeChanged:
+                    updateMediaInfo();
+                    break;
+                case MediaPlayer.Event.LengthChanged:
+                    break;
+                case MediaPlayer.Event.PositionChanged:
+                    break;
+                case MediaPlayer.Event.Vout:
+                    break;
+                case MediaPlayer.Event.ESAdded:
+                    break;
+                case MediaPlayer.Event.ESDeleted:
+                    break;
+                case MediaPlayer.Event.ESSelected:
+                    break;
+                case MediaPlayer.Event.SeekableChanged:
+                    break;
+                case MediaPlayer.Event.PausableChanged:
+                    break;
+                case MediaPlayer.Event.RecordChanged:
                     break;
             }
         }
@@ -507,6 +627,42 @@ public class VlcVideoWindow {
         }
     };
 
+    // 注册系统音量变化广播
+    private void registerSystemVolumeReceiver() {
+        SystemVolumeReceiver volumeReceiver = new SystemVolumeReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("android.media.VOLUME_CHANGED_ACTION");
+        mBuilder.bContext.registerReceiver(volumeReceiver, filter);
+    }
+
+    // 系统音量广播接收者
+    private class SystemVolumeReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction() != null && intent.getAction().equals("android.media.VOLUME_CHANGED_ACTION")) {
+                mIsReceiverVolume = true;
+                setVolume(getCurrentSystemVolume(), false);
+            }
+        }
+    }
+
+    // 更新视频屏幕显示大小
+    private void updateSurfaceFrame() {
+        int sw, sh;
+        if (mIsMinimize) {
+            sw = DisplayUtil.dip2px(mBuilder.bContext, 500);
+//            sh = DisplayUtil.dip2px(mBuilder.bContext, 320);
+        } else {
+            Display defaultDisplay = mWindowManager.getDefaultDisplay();
+            sw = defaultDisplay.getWidth();
+//            sh = defaultDisplay.getHeight();
+        }
+
+        int displayHeight = (int) (sw * mVideoHeight * 1.0f / mVideoWidth);
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(sw, displayHeight);
+        mSurfaceView.setLayoutParams(params);
+    }
+
     // 初始化显示视频相关信息
     private void initMediaInfo() {
         if (mBuilder.bMediaPlayer.isSeekable()) {
@@ -516,12 +672,15 @@ public class VlcVideoWindow {
             mTotalTime = mBuilder.bMediaPlayer.getLength();
             mVideoTotalTimeTv.setText(DateUtil.getHHMMSS(mTotalTime));
             mVideoProgressSb.setProgress(0);
-            mVideoProgressSb.setMax(PROGRESS_MAX);
+            mVideoProgressSb.setMax((int) mTotalTime);
         } else {
             mVideoProgressSb.setVisibility(View.GONE);
             mVideoControlLl.setVisibility(View.GONE);
         }
-        setVolume(VOLUME_DEFAULT_SIZE);
+
+        int currentSystemVolume = getCurrentSystemVolume();
+        mIsReceiverVolume = true;
+        setVolume(currentSystemVolume, false);
     }
 
     // 更新显示视频相关信息
@@ -532,14 +691,8 @@ public class VlcVideoWindow {
 
         if (mBuilder.bMediaPlayer.isSeekable()) {
             long currentTime = mBuilder.bMediaPlayer.getTime();
-
             mVideoCurrentTimeTv.setText(DateUtil.getHHMMSS(currentTime));
-            String ratio = NumberUtil.ratio(currentTime, mTotalTime, PROGRESS_MAX);
-            int progress = 0;
-            if (NumberUtil.isNumeric(ratio)) {
-                progress = Integer.parseInt(ratio);
-            }
-            mVideoProgressSb.setProgress(progress);
+            mVideoProgressSb.setProgress((int) currentTime);
         }
     }
 
@@ -551,7 +704,7 @@ public class VlcVideoWindow {
 
     // 设置视频播放进度
     private void setProgress(int progress) {
-        mBuilder.bMediaPlayer.setTime(mTotalTime / PROGRESS_MAX * progress);
+        mBuilder.bMediaPlayer.setTime(progress);
     }
 
     // 设置播放位置(快进/快退) 单位ms
@@ -559,11 +712,28 @@ public class VlcVideoWindow {
         long currentTime = mBuilder.bMediaPlayer.getTime();
         if (CONSOLE_10_S < currentTime && currentTime < mTotalTime - CONSOLE_10_S) {
             mBuilder.bMediaPlayer.setTime(currentTime + increment);
-        } else if (currentTime < CONSOLE_10_S && increment > 0) {
-            mBuilder.bMediaPlayer.setTime(currentTime + increment);
-        } else if (currentTime > mTotalTime - CONSOLE_10_S && increment < 0) {
-            mBuilder.bMediaPlayer.setTime(currentTime + increment);
+        } else if (currentTime < CONSOLE_10_S) {
+            if (increment > 0) {
+                mBuilder.bMediaPlayer.setTime(currentTime + increment);
+            } else {
+                mBuilder.bMediaPlayer.setTime(0);
+            }
+        } else if (currentTime > mTotalTime - CONSOLE_10_S) {
+            if (increment > 0) {
+                mBuilder.bMediaPlayer.setTime(mTotalTime - 1000);
+            } else {
+                mBuilder.bMediaPlayer.setTime(currentTime + increment);
+            }
         }
+    }
+
+    private int getCurrentSystemVolume() {
+        return 100 * mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+    }
+
+    private void setSystemVolume(int volume) {
+        volume = volume * mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) / 100;
+        mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0);
     }
     // -------------------------- 本地私有方法 finish -----------------------------------
 }

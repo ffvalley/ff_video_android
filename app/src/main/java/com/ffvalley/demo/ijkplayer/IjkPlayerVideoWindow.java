@@ -82,8 +82,8 @@ public class IjkPlayerVideoWindow {
         }
     }
 
-    // 初始化视频播放Dialog
-    public void initDialog() {
+    // 初始化视频播放Window
+    public void initWindow() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             mLayoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         } else {
